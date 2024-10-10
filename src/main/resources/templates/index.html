@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${pageTitle}">아름다운 메인 페이지</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      height: 100%;
+    }
+
+    .container {
+      display: flex;
+      height: 100%;
+    }
+
+    .sidebar {
+      width: 250px;
+      background-color: #f0f0f0;
+      padding: 20px;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .logo-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+    }
+
+    .logo h1 {
+      margin-top: 10px;
+      font-size: 1.5em;
+      color: #333;
+    }
+
+    nav ul {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    nav ul li {
+      margin-bottom: 15px;
+    }
+
+    nav ul li a {
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+      transition: color 0.3s ease;
+    }
+
+    nav ul li a:hover {
+      color: #007bff;
+    }
+
+    .content {
+      flex-grow: 1;
+      padding: 20px;
+      background-color: #fff;
+    }
+
+    header {
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      color: #007bff;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    h3 {
+      color: #333;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 10px;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <aside class="sidebar">
+    <div class="logo">
+      <img th:src="${logoUrl}" alt="로고" class="logo-img">
+      <h1 th:text="${brandName}">My Brand</h1>
+    </div>
+    <nav>
+      <ul>
+        <li th:each="menuItem : ${menuItems}">
+          <a th:href="${menuItem.url}" th:text="${menuItem.name}">메뉴 항목</a>
+        </li>
+      </ul>
+    </nav>
+  </aside>
+  <main class="content">
+    <header>
+      <h2 th:text="${welcomeMessage}">환영합니다!</h2>
+    </header>
+    <section th:each="section : ${sections}" th:id="${section.id}">
+      <h3 th:text="${section.title}">섹션 제목</h3>
+      <div th:utext="${section.content}">
+        <!-- 섹션 내용은 서버에서 HTML로 제공될 수 있습니다 -->
+      </div>
+    </section>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  document.addEventListener('DOMContentLoaded', function() {
+    const navLinks = document.querySelectorAll('nav a');
+    const sections = document.querySelectorAll('section');
+
+    navLinks.forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href').substring(1);
+        sections.forEach(section => {
+          if (section.id === targetId) {
+            section.style.display = 'block';
+          } else {
+            section.style.display = 'none';
+          }
+        });
+      });
+    });
+
+    // 초기에 첫 번째 섹션만 표시
+    if (sections.length > 0) {
+      sections[0].style.display = 'block';
+      for (let i = 1; i < sections.length; i++) {
+        sections[i].style.display = 'none';
+      }
+    }
+
+    // Thymeleaf를 통해 서버에서 전달된 메시지 (옵션)
+    const serverMessage = /*[[${serverMessage}]]*/ '서버 메시지';
+    if (serverMessage) {
+      console.log('서버 메시지:', serverMessage);
+    }
+  });
+</script>
+</body>
+</html>
