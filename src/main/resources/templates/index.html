@@ -3,163 +3,189 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title th:text="${pageTitle}">아름다운 메인 페이지</title>
+  <title>아름다운 메인 페이지</title>
   <style>
     body, html {
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
-      height: 100%;
+      font-family: 'Arial', sans-serif;
+      scroll-behavior: smooth;
     }
-
     .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    header {
+      background-color: #ffffff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: fixed;
+      width: 100%;
+      z-index: 1000;
+    }
+    nav {
       display: flex;
-      height: 100%;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 0;
     }
-
-    .sidebar {
-      width: 250px;
-      background-color: #f0f0f0;
-      padding: 20px;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-    }
-
-    .logo {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-
-    .logo-img {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-    }
-
-    .logo h1 {
-      margin-top: 10px;
-      font-size: 1.5em;
-      color: #333;
-    }
-
     nav ul {
+      display: flex;
       list-style-type: none;
-      padding: 0;
     }
-
     nav ul li {
-      margin-bottom: 15px;
+      margin-left: 2rem;
     }
-
     nav ul li a {
       text-decoration: none;
       color: #333;
       font-weight: bold;
       transition: color 0.3s ease;
     }
-
     nav ul li a:hover {
       color: #007bff;
     }
-
-    .content {
-      flex-grow: 1;
-      padding: 20px;
-      background-color: #fff;
+    .hero {
+      background: linear-gradient(135deg, #007bff, #00c6ff);
+      color: white;
+      padding: 100px 0;
+      text-align: center;
     }
-
-    header {
-      margin-bottom: 30px;
+    .hero h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
     }
-
-    h2 {
+    .hero p {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #ffffff;
       color: #007bff;
+      padding: 0.8rem 2rem;
+      border-radius: 30px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: all 0.3s ease;
     }
-
-    section {
-      margin-bottom: 40px;
+    .btn:hover {
+      background-color: #007bff;
+      color: #ffffff;
+      transform: translateY(-3px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
-
-    h3 {
-      color: #333;
-      border-bottom: 2px solid #007bff;
-      padding-bottom: 10px;
+    .features {
+      padding: 80px 0;
+      background-color: #f8f9fa;
     }
-
-    ul {
-      padding-left: 20px;
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 2rem;
     }
-
-    @media (max-width: 768px) {
-      .container {
-        flex-direction: column;
-      }
-
-      .sidebar {
-        width: 100%;
-      }
+    .feature-item {
+      background-color: #ffffff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+    }
+    .feature-item:hover {
+      transform: translateY(-5px);
+    }
+    .feature-item h3 {
+      color: #007bff;
+      margin-bottom: 1rem;
+    }
+    footer {
+      background-color: #333;
+      color: #ffffff;
+      text-align: center;
+      padding: 2rem 0;
     }
   </style>
 </head>
 <body>
-<div class="container">
-  <aside class="sidebar">
-    <div class="logo">
-      <img th:src="${logoUrl}" alt="로고" class="logo-img">
-      <h1 th:text="${brandName}">My Brand</h1>
+<header>
+  <nav class="container">
+    <h1>로고</h1>
+    <ul>
+      <li><a href="#home">홈</a></li>
+      <li><a href="#features">특징</a></li>
+      <li><a href="#about">소개</a></li>
+      <li><a href="#contact">연락처</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+  <section id="home" class="hero">
+    <div class="container">
+      <h1>환영합니다!</h1>
+      <p>아름답고 현대적인 웹사이트에 오신 것을 환영합니다.</p>
+      <a href="#features" class="btn">자세히 보기</a>
     </div>
-    <nav>
-      <ul>
-        <li th:each="menuItem : ${menuItems}">
-          <a th:href="${menuItem.url}" th:text="${menuItem.name}">메뉴 항목</a>
-        </li>
-      </ul>
-    </nav>
-  </aside>
-  <main class="content">
-    <header>
-      <h2 th:text="${welcomeMessage}">환영합니다!</h2>
-    </header>
-    <section th:each="section : ${sections}" th:id="${section.id}">
-      <h3 th:text="${section.title}">섹션 제목</h3>
-      <div th:utext="${section.content}">
-        <!-- 섹션 내용은 서버에서 HTML로 제공될 수 있습니다 -->
+  </section>
+
+  <section id="features" class="features">
+    <div class="container">
+      <h2>주요 특징</h2>
+      <div class="feature-grid">
+        <div class="feature-item">
+          <h3>반응형 디자인</h3>
+          <p>모든 디바이스에서 완벽하게 작동합니다.</p>
+        </div>
+        <div class="feature-item">
+          <h3>현대적인 UI</h3>
+          <p>세련되고 직관적인 사용자 인터페이스를 제공합니다.</p>
+        </div>
+        <div class="feature-item">
+          <h3>빠른 로딩</h3>
+          <p>최적화된 성능으로 빠른 페이지 로딩을 보장합니다.</p>
+        </div>
       </div>
-    </section>
-  </main>
-</div>
+    </div>
+  </section>
+</main>
 
-<script th:inline="javascript">
+<footer>
+  <div class="container">
+    <p>&copy; 2024 아름다운 메인 페이지. 모든 권리 보유.</p>
+  </div>
+</footer>
+
+<script>
   document.addEventListener('DOMContentLoaded', function() {
-    const navLinks = document.querySelectorAll('nav a');
-    const sections = document.querySelectorAll('section');
-
-    navLinks.forEach(link => {
-      link.addEventListener('click', function(e) {
+    // 스크롤 애니메이션
+    const scrollLinks = document.querySelectorAll('a[href^="#"]');
+    for (const scrollLink of scrollLinks) {
+      scrollLink.addEventListener('click', function(e) {
         e.preventDefault();
-        const targetId = this.getAttribute('href').substring(1);
-        sections.forEach(section => {
-          if (section.id === targetId) {
-            section.style.display = 'block';
-          } else {
-            section.style.display = 'none';
-          }
+        const target = document.querySelector(this.getAttribute('href'));
+        target.scrollIntoView({
+          behavior: 'smooth'
         });
       });
+    }
+
+    // 특징 아이템 애니메이션
+    const featureItems = document.querySelectorAll('.feature-item');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = 1;
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.5 });
+
+    featureItems.forEach(item => {
+      item.style.opacity = 0;
+      item.style.transform = 'translateY(20px)';
+      item.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      observer.observe(item);
     });
-
-    // 초기에 첫 번째 섹션만 표시
-    if (sections.length > 0) {
-      sections[0].style.display = 'block';
-      for (let i = 1; i < sections.length; i++) {
-        sections[i].style.display = 'none';
-      }
-    }
-
-    // Thymeleaf를 통해 서버에서 전달된 메시지 (옵션)
-    const serverMessage = /*[[${serverMessage}]]*/ '서버 메시지';
-    if (serverMessage) {
-      console.log('서버 메시지:', serverMessage);
-    }
   });
 </script>
 </body>
