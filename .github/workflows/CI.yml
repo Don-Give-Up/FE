@@ -53,3 +53,4 @@ jobs:
           -d '{"content": "✅ Build succeeded! The CI pipeline for the branch has completed successfully."}' \
           $DISCORD_WEBHOOK
 
+        
