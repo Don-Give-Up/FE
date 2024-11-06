@@ -53,4 +53,23 @@ jobs:
           -d '{"content": "✅ Build succeeded! The CI pipeline for the branch has completed successfully."}' \
           $DISCORD_WEBHOOK
 
+      - name: Create output
+        run: sh ./build.sh
+
+      - name: Push to another repository
+        id: push_directory
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.AUTO_ACTIONS }} # 환경 변수에 Personal Access Token 추가
+        with:
+          source-directory: "output"
+          destination-github-username: hojin0729
+          destination-repository-name: FE
+          target-branch: dev
+          commit-message: "Automatic deployment from GitHub Actions"
+          user-name: "hojin0729" # 푸시할 때 사용할 사용자 이름을 명시
+          user-email: ${{ secrets.EMAIL }} # GitHub Secrets에서 설정한 이메일 사용
+
+      - name: Test get variable exported by push-to-another-repository
+        run: echo $DESTINATION_CLONED_DIRECTORY
         
