@@ -36,7 +36,7 @@
                 <tr v-if="paginatedArticles[i-1]" @click="viewArticle(paginatedArticles[i-1].articleId)" class="article-row">
                   <td class="id-cell">{{ paginatedArticles[i-1].articleId }}</td>
                   <td class="title-cell">{{ paginatedArticles[i-1].articleTitle }}</td>
-                  <td class="author-cell">{{ paginatedArticles[i-1].memberId }}</td>
+                  <td class="author-cell">{{ paginatedArticles[i-1].memberNickname }}</td>
                   <td class="date-cell">{{ formatDate(paginatedArticles[i-1].createdAt) }}</td>
                 </tr>
                 <tr v-else class="empty-row">
@@ -66,7 +66,7 @@
                 &gt;
               </button>
             </div>
-            <button class="write-button" @click="$router.push('/article/new')">
+            <button class="write-button" @click="$router.push('/articleform')">
               글쓰기
             </button>
           </div>
@@ -107,10 +107,10 @@ export default {
           case 'title':
             return article.articleTitle.toLowerCase().includes(keyword);
           case 'author':
-            return article.memberId.toString().includes(keyword);
+            return article.memberNickname.toLowerCase().includes(keyword);
           case 'all':
             return article.articleTitle.toLowerCase().includes(keyword) ||
-                   article.memberId.toString().includes(keyword);
+                   article.memberNickname.toLowerCase().includes(keyword);
           default:
             return true;
         }
@@ -143,16 +143,21 @@ export default {
       }
     },
     viewArticle(articleId) {
-      this.$router.push(`/article/${articleId}`);
+      this.$router.push(`/articles/${articleId}`);
     },
-    formatDate(dateString) {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return date.toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).replace(/\. /g, '-').replace('.', '');
+    formatDate(dateArray) {
+      if (!dateArray || !Array.isArray(dateArray)) return '';
+      
+      try {
+        const year = dateArray[0];
+        const month = String(dateArray[1]).padStart(2, '0');
+        const day = String(dateArray[2]).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
+      } catch (error) {
+        console.error('Date formatting error:', error);
+        return '';
+      }
     },
     nextPage() {
       if (this.currentPage < this.totalPages) {
