@@ -10,6 +10,7 @@ import SignUpForm from '@/components/SignUpForm.vue';
 import ArticleForm from '@/components/ArticleForm.vue';
 import GeneralForum from '@/components/GeneralForum.vue';
 import MyPage from '@/components/MyPage.vue';
+import Articles from '@/components/Articles.vue';
 const routes = [
   {
     path: '/',
@@ -55,6 +56,11 @@ const routes = [
     path: '/mypage',
     name: "MyPage",
     component: MyPage
+  },
+  {
+    path: '/articles',
+    name: "Articles",
+    component: Articles
   }
 ];
 
