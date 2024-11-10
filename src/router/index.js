@@ -9,6 +9,7 @@ import Login from '@/components/Login.vue';
 import SignUpForm from '@/components/SignUpForm.vue';
 import ArticleForm from '@/components/ArticleForm.vue';
 import Articles from '@/components/Articles.vue';
+import ArticleDetail from '../components/ArticleDetail.vue'
 const routes = [
   {
     path: '/',
@@ -49,6 +50,11 @@ const routes = [
     path: '/articles',
     name: "Articles",
     component: Articles
+  },
+  {
+    path: '/articles/:id',
+    name: 'ArticleDetail',
+    component: ArticleDetail
   }
 ];
 
