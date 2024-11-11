@@ -20,10 +20,10 @@
               v-model="newComment" 
               placeholder="댓글을 작성해주세요"
               rows="3"
-              maxlength="500"
+              maxlength="255"
             ></textarea>
             <div class="comment-form-footer">
-              <span class="char-count">{{ newComment.length }}/500자</span>
+              <span class="char-count">{{ newComment.length }}/255자</span>
               <button @click="submitComment" class="comment-submit">댓글 작성</button>
             </div>
           </div>
@@ -60,10 +60,10 @@
                 <textarea 
                   v-model="comment.editContent" 
                   rows="3"
-                  maxlength="500"
+                  maxlength="255"
                 ></textarea>
                 <div class="edit-form-footer">
-                  <span class="char-count">{{ comment.editContent.length }}/500자</span>
+                  <span class="char-count">{{ comment.editContent.length }}/255자</span>
                   <div class="edit-buttons">
                     <button @click="saveEdit(comment)" class="save-btn">저장</button>
                     <button @click="cancelEdit(comment)" class="cancel-btn">취소</button>
