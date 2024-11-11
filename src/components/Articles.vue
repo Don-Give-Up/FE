@@ -356,31 +356,35 @@ export default {
 
 .write-button {
   width: 76.35px;
-  padding: 8px 20px;
+  padding: 8px 12px;
   background-color: rgba(0, 0, 0, 0.865);
   color: white;
   border: none;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: background-color 0.2s;
   height: 30px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 .dummy-button {
   width: 76.35px;
-  padding: 8px 20px;
+  padding: 8px 12px;
   background-color: transparent;
   color: white;
   border: none;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: background-color 0.2s;
   height: 30px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .write-button:hover {
