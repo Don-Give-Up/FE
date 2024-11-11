@@ -49,7 +49,7 @@
                   <option value="title">제목</option>
                   <option value="category">카테고리</option>
                   <option value="level">난이도</option>
-                  <option value="author">작성자</option>
+  
                 </select>
                 <input 
                   v-model="searchKeyword" 
@@ -75,7 +75,6 @@
                     <th>제목</th>
                     <th>카테고리</th>
                     <th>난이도</th>
-                    <th>작성자</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -93,36 +92,23 @@
                     <td>{{ quiz.quizTitle }}</td>
                     <td>{{ quiz.quizCategory }}</td>
                     <td>{{ quiz.quizLevel }}</td>
-                    <td>{{ quiz.nickname }}</td>
                   </tr>
                 </tbody>
               </table>
-              <div class="pagination">
-                <div class="pagination-buttons">
-                  <button class="nav-btn prev" @click="prevPage" :disabled="currentPage === 1">
-                    이전
-                  </button>
-                  <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
-                  <button class="nav-btn next" @click="nextPage" :disabled="currentPage >= totalPages">
-                    다음
-                  </button>
-                </div>
-              </div>
+            
             </div>
             <div class="modal-buttons">
               <button @click="addSelectedQuizzes" class="add-selected-btn" :disabled="!selectedQuizzes.length">
                 선택한 퀴즈 추가 ({{ selectedQuizzes.length }}개)
               </button>
-              <div class="pagination">
-                <div class="pagination-buttons">
-                  <button class="nav-btn prev" @click="prevPage" :disabled="currentPage === 1">
-                    이전
-                  </button>
-                  <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
-                  <button class="nav-btn next" @click="nextPage" :disabled="currentPage >= totalPages">
-                    다음
-                  </button>
-                </div>
+              <div class="pagination-buttons">
+                <button class="nav-btn prev" @click="prevPage" :disabled="currentPage === 1">
+                  이전
+                </button>
+                <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
+                <button class="nav-btn next" @click="nextPage" :disabled="currentPage >= totalPages">
+                  다음
+                </button>
               </div>
               <button @click="closeQuizModal" class="cancel-btn">닫기</button>
             </div>
@@ -168,7 +154,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="quiz in filteredCurrentGameQuizzes" 
+                  <tr v-for="quiz in paginatedCurrentGameQuizzes" 
                       :key="quiz.teacherQuizId" 
                       class="quiz-row"
                       @click="toggleCurrentQuizSelection(quiz)">
@@ -185,17 +171,7 @@
                   </tr>
                 </tbody>
               </table>
-              <div class="pagination">
-                <div class="pagination-buttons">
-                  <button class="nav-btn prev" @click="prevPage" :disabled="currentPage === 1">
-                    이전
-                  </button>
-                  <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
-                  <button class="nav-btn next" @click="nextPage" :disabled="currentPage >= totalPages">
-                    다음
-                  </button>
-                </div>
-              </div>
+              
             </div>
             <div class="modal-buttons">
               <button 
@@ -204,6 +180,15 @@
                 :disabled="!selectedCurrentQuizzes.length">
                 선택한 퀴즈 삭제 ({{ selectedCurrentQuizzes.length }}개)
               </button>
+              <div class="pagination-buttons">
+                <button class="nav-btn prev" @click="prevQuizListPage" :disabled="quizListCurrentPage === 1">
+                  이전
+                </button>
+                <span class="page-info">{{ quizListCurrentPage }} / {{ quizListTotalPages }}</span>
+                <button class="nav-btn next" @click="nextQuizListPage" :disabled="quizListCurrentPage >= quizListTotalPages">
+                  다음
+                </button>
+              </div>
               <button @click="closeQuizListModal" class="cancel-btn">닫기</button>
             </div>
           </div>
@@ -318,6 +303,14 @@ export default {
     },
     totalPages() {
       return Math.ceil(this.filteredQuizzes.length / this.itemsPerPage);
+    },
+    paginatedCurrentGameQuizzes() {
+      const start = (this.quizListCurrentPage - 1) * this.quizListItemsPerPage;
+      const end = start + this.quizListItemsPerPage;
+      return this.filteredCurrentGameQuizzes.slice(start, end);
+    },
+    quizListTotalPages() {
+      return Math.ceil(this.filteredCurrentGameQuizzes.length / this.quizListItemsPerPage);
     }
   },
   methods: {
@@ -344,30 +337,11 @@ export default {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        // 각 퀴즈에 대해 작성자 닉네임 조회
-        const quizzesWithNickname = await Promise.all(
-          response.data.map(async (quiz) => {
-            let nickname = '알 수 없음';
-            if (quiz.memberId) {
-              try {
-                const nicknameResponse = await axios.get(
-                  `${beUrl}/api/v1/members/${quiz.memberId}/nickname`,
-                  { headers: { Authorization: `Bearer ${token}` }}
-                );
-                nickname = nicknameResponse.data || '알 수 없음';
-              } catch (error) {
-                console.error("네임 조회 실패:", error);
-              }
-            }
+        // 현재 게임에 추가된 퀴즈 ID 목록 가져오기
+        const currentGameQuizIds = this.currentGameQuizzes.map(quiz => quiz.quizId);
 
-            return {
-              ...quiz,
-              nickname: nickname
-            };
-          })
-        );
-
-        this.quizList = quizzesWithNickname;
+        // 필터링하여 이미 추가된 퀴즈는 제외
+        this.quizList = response.data.filter(quiz => !currentGameQuizIds.includes(quiz.quizId));
       } catch (error) {
         console.error("퀴즈 목록 조회 실패:", error);
       }
@@ -376,7 +350,8 @@ export default {
     // 퀴즈  모달 표시
     async showAddQuizModal(game) {
       this.currentGameId = game.gameId;
-      await this.fetchQuizList();
+      await this.fetchCurrentGameQuizzes(); // 현재 게임에 추가된 퀴즈 목록 불러오기
+      await this.fetchQuizList(); // 필터링된 퀴즈 목록 불러오기
       this.showQuizModal = true;
     },
 
@@ -606,6 +581,42 @@ export default {
       if (this.currentPage < this.totalPages) {
         this.currentPage++;
       }
+    },
+
+    prevQuizListPage() {
+      if (this.quizListCurrentPage > 1) {
+        this.quizListCurrentPage--;
+      }
+    },
+
+    nextQuizListPage() {
+      if (this.quizListCurrentPage < this.quizListTotalPages) {
+        this.quizListCurrentPage++;
+      }
+    },
+
+    async fetchAvailableQuizzes(memberId, gameId) {
+      try {
+        const response = await axios.get(`/api/v1/teacher-quizzes/member/${memberId}/game/${gameId}`);
+        this.availableQuizzes = response.data;
+      } catch (error) {
+        console.error("퀴즈 목록 조회 실패:", error);
+      }
+    },
+
+    async fetchCurrentGameQuizzes() {
+      const token = localStorage.getItem("jwtToken");
+      const beUrl = process.env.VUE_APP_BE_API_URL;
+
+      try {
+        const response = await axios.get(`${beUrl}/api/v1/teacher-quizzes/game/${this.currentGameId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        this.currentGameQuizzes = response.data;
+      } catch (error) {
+        console.error("현재 게임의 퀴즈 목록 조회 실패:", error);
+      }
     }
   },
   mounted() {
@@ -797,12 +808,6 @@ export default {
   gap: 10px;
   padding-top: 20px;
   margin-top: auto;
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
 }
 
 .pagination-buttons {
