@@ -113,6 +113,17 @@
               <button @click="addSelectedQuizzes" class="add-selected-btn" :disabled="!selectedQuizzes.length">
                 선택한 퀴즈 추가 ({{ selectedQuizzes.length }}개)
               </button>
+              <div class="pagination">
+                <div class="pagination-buttons">
+                  <button class="nav-btn prev" @click="prevPage" :disabled="currentPage === 1">
+                    이전
+                  </button>
+                  <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
+                  <button class="nav-btn next" @click="nextPage" :disabled="currentPage >= totalPages">
+                    다음
+                  </button>
+                </div>
+              </div>
               <button @click="closeQuizModal" class="cancel-btn">닫기</button>
             </div>
           </div>
@@ -429,7 +440,7 @@ export default {
 
     async addSelectedQuizzes() {
       if (!this.selectedQuizzes.length) {
-        alert('선택�� 퀴즈가 없습니다.');
+        alert('선택 퀴즈가 없습니다.');
         return;
       }
 
@@ -574,7 +585,7 @@ export default {
         // 현재 게임의 퀴즈 목록을 다시 불러옴
         await this.showQuizListModal(this.currentGame);
         this.selectedCurrentQuizzes = [];
-        alert('선택한 퀴즈가 성적으로 삭제되었습니다.');
+        alert('선택한 퀴즈가 성적으로 삭제었습니다.');
       } catch (error) {
         console.error("퀴즈 삭제 실패:", error);
         alert("퀴즈 삭제에 실패했습니다.");
@@ -781,10 +792,54 @@ export default {
 
 .modal-buttons {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
   padding-top: 20px;
-  border-top: 1px solid #eee;
+  margin-top: auto;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.pagination-buttons {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.nav-btn {
+  min-width: 80px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid #e0e0e0;
+  background-color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #333;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+}
+
+.nav-btn:disabled {
+  background-color: #f5f5f5;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.page-info {
+  min-width: 80px;
+  text-align: center;
+  font-weight: 500;
+  color: #666;
 }
 
 .add-selected-btn, .cancel-btn {
@@ -851,50 +906,5 @@ export default {
 
 .game-buttons button:hover {
   opacity: 0.9;
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 15px 0;
-  border-top: 1px solid #eee;
-}
-
-.pagination-buttons {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.nav-btn {
-  min-width: 80px;
-  height: 36px;
-  padding: 0 16px;
-  border: 1px solid #e0e0e0;
-  background-color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-  color: #333;
-  transition: all 0.2s;
-}
-
-.nav-btn:hover:not(:disabled) {
-  background-color: #f8f9fa;
-  border-color: #dee2e6;
-}
-
-.nav-btn:disabled {
-  background-color: #f5f5f5;
-  color: #aaa;
-  cursor: not-allowed;
-}
-
-.page-info {
-  min-width: 80px;
-  text-align: center;
-  font-weight: 500;
-  color: #666;
 }
 </style>
