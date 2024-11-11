@@ -49,6 +49,7 @@
                   <option value="title">제목</option>
                   <option value="category">카테고리</option>
                   <option value="level">난이도</option>
+                  <option value="author">작성자</option>
                 </select>
                 <input 
                   v-model="searchKeyword" 
@@ -106,10 +107,28 @@
           </div>
         </div>
 
-        <!-- 퀴즈 목록 모달 추가 -->
+        <!-- 퀴즈 목록 모달 수정 -->
         <div v-if="showQuizListModalFlag" class="modal">
           <div class="modal-content">
             <h3>현재 게임의 퀴즈 목록</h3>
+            <div class="search-area">
+              <div class="search-container">
+                <select v-model="quizListSearchType" class="search-select">
+                  <option value="all">전체</option>
+                  <option value="title">제목</option>
+                  <option value="category">카테고리</option>
+                  <option value="level">난이도</option>
+                </select>
+                <input 
+                  v-model="quizListSearchKeyword" 
+                  type="text" 
+                  placeholder="퀴즈 검색"
+                  class="search-input"
+                  @keyup.enter="handleQuizListSearch"
+                >
+                <button @click="handleQuizListSearch" class="search-button">검색</button>
+              </div>
+            </div>
             <div class="quiz-table">
               <table>
                 <thead>
@@ -124,11 +143,10 @@
                     <th>제목</th>
                     <th>카테고리</th>
                     <th>난이도</th>
-                    <th>작성자</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="quiz in currentGameQuizzes" 
+                  <tr v-for="quiz in filteredCurrentGameQuizzes" 
                       :key="quiz.teacherQuizId" 
                       class="quiz-row"
                       @click="toggleCurrentQuizSelection(quiz)">
@@ -142,7 +160,6 @@
                     <td>{{ quiz.quizTitle }}</td>
                     <td>{{ quiz.quizCategory }}</td>
                     <td>{{ quiz.quizLevel }}</td>
-                    <td>{{ quiz.nickname }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -188,6 +205,12 @@ export default {
       currentGameQuizzes: [],
       selectedCurrentQuizzes: [],
       currentGame: null,
+      quizListSearchType: 'all',
+      quizListSearchKeyword: '',
+      currentPage: 1,
+      itemsPerPage: 10,
+      quizListCurrentPage: 1,
+      quizListItemsPerPage: 10,
     }
   },
   computed: {
@@ -203,10 +226,13 @@ export default {
             return quiz.quizCategory.toLowerCase().includes(keyword);
           case 'level':
             return quiz.quizLevel.toLowerCase().includes(keyword);
+          case 'author':
+            return quiz.nickname.toLowerCase().includes(keyword);
           case 'all':
             return quiz.quizTitle.toLowerCase().includes(keyword) ||
                    quiz.quizCategory.toLowerCase().includes(keyword) ||
-                   quiz.quizLevel.toLowerCase().includes(keyword);
+                   quiz.quizLevel.toLowerCase().includes(keyword) ||
+                   quiz.nickname.toLowerCase().includes(keyword);
           default:
             return true;
         }
@@ -227,6 +253,30 @@ export default {
       set(value) {
         this.selectedCurrentQuizzes = value ? [...this.currentGameQuizzes] : [];
       }
+    },
+    filteredCurrentGameQuizzes() {
+      if (!this.quizListSearchKeyword) return this.currentGameQuizzes;
+      
+      const keyword = this.quizListSearchKeyword.toLowerCase();
+      return this.currentGameQuizzes.filter(quiz => {
+        switch (this.quizListSearchType) {
+          case 'title':
+            return quiz.quizTitle.toLowerCase().includes(keyword);
+          case 'category':
+            return quiz.quizCategory.toLowerCase().includes(keyword);
+          case 'level':
+            return quiz.quizLevel.toLowerCase().includes(keyword);
+          case 'author':
+            return quiz.nickname.toLowerCase().includes(keyword);
+          case 'all':
+            return quiz.quizTitle.toLowerCase().includes(keyword) ||
+                   quiz.quizCategory.toLowerCase().includes(keyword) ||
+                   quiz.quizLevel.toLowerCase().includes(keyword) ||
+                   quiz.nickname.toLowerCase().includes(keyword);
+          default:
+            return true;
+        }
+      });
     }
   },
   methods: {
@@ -246,17 +296,43 @@ export default {
     // 전체 퀴즈 목록 조회
     async fetchQuizList() {
       const token = localStorage.getItem("jwtToken");
+      const beUrl = process.env.VUE_APP_BE_API_URL;
+      
       try {
-        const response = await axios.get(`${process.env.VUE_APP_BE_API_URL}/api/v1/quizs/all`, {
+        const response = await axios.get(`${beUrl}/api/v1/quizs/all`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        this.quizList = response.data;
+
+        // 각 퀴즈에 대해 작성자 닉네임 조회
+        const quizzesWithNickname = await Promise.all(
+          response.data.map(async (quiz) => {
+            let nickname = '알 수 없음';
+            if (quiz.memberId) {
+              try {
+                const nicknameResponse = await axios.get(
+                  `${beUrl}/api/v1/members/${quiz.memberId}/nickname`,
+                  { headers: { Authorization: `Bearer ${token}` }}
+                );
+                nickname = nicknameResponse.data || '알 수 없음';
+              } catch (error) {
+                console.error("네임 조회 실패:", error);
+              }
+            }
+
+            return {
+              ...quiz,
+              nickname: nickname
+            };
+          })
+        );
+
+        this.quizList = quizzesWithNickname;
       } catch (error) {
         console.error("퀴즈 목록 조회 실패:", error);
       }
     },
 
-    // 퀴즈 추가 모달 표시
+    // 퀴즈  모달 표시
     async showAddQuizModal(game) {
       this.currentGameId = game.gameId;
       await this.fetchQuizList();
@@ -288,7 +364,7 @@ export default {
         );
 
         if (teacherQuizResponse.data) {
-          console.log('퀴즈가 성공적으로 저장되었습니다:', teacherQuizResponse.data);
+          console.log('퀴즈 성으로 저장되었습니다:', teacherQuizResponse.data);
           await this.fetchMyGames();
           this.closeQuizModal();
         }
@@ -376,61 +452,48 @@ export default {
       const beUrl = process.env.VUE_APP_BE_API_URL;
       
       try {
-        // TeacherQuiz 목록을 가져옴
-        const response = await axios.get(
+        // TeacherQuiz 목록을 가져옴 (이미 memberNickname이 포함되어 있음)
+        const teacherQuizResponse = await axios.get(
           `${beUrl}/api/v1/teacher-quizzes/game/${game.gameId}`,
           { headers: { Authorization: `Bearer ${token}` }}
         );
         
-        // 각 TeacherQuiz에 대해 Quiz 정보와 닉네임을 가져옴
+        console.log('TeacherQuiz 응답:', teacherQuizResponse.data);
+
         const quizzesWithDetails = await Promise.all(
-          response.data.map(async (teacherQuiz) => {
+          teacherQuizResponse.data.map(async (teacherQuiz) => {
             try {
+              // 1. quizId로 퀴즈 정보 조회
               const quizResponse = await axios.get(
                 `${beUrl}/api/v1/quizs/${teacherQuiz.quizId}`,
                 { headers: { Authorization: `Bearer ${token}` }}
               );
-
-              // memberId로 닉네임 조회
-              let nickname = '알 수 없음';
-              if (quizResponse.data.memberId) {
-                try {
-                  const nicknameResponse = await axios.get(
-                    `${beUrl}/api/v1/members/${quizResponse.data.memberId}/nickname`,
-                    { headers: { Authorization: `Bearer ${token}` }}
-                  );
-                  nickname = nicknameResponse.data || '알 수 없음';
-                } catch (error) {
-                  console.error("닉네임 조회 실패:", error);
-                }
-              }
+              
+              const quiz = quizResponse.data;
+              console.log('퀴즈 정보:', quiz);
 
               return {
                 teacherQuizId: teacherQuiz.teacherQuizId,
                 quizId: teacherQuiz.quizId,
                 gameId: teacherQuiz.gameId,
                 isStopped: teacherQuiz.isStopped,
-                quizTitle: quizResponse.data.quizTitle,
-                quizCategory: quizResponse.data.quizCategory,
-                quizLevel: quizResponse.data.quizLevel,
-                nickname: nickname,
-                createdAt: quizResponse.data.createdAt || new Date().toISOString()
+                quizTitle: quiz.quiz,
+                quizCategory: quiz.category,
+                quizLevel: quiz.level,
+                quizType: quiz.type,
+                quizAnswer: quiz.answer,
+                quizDescription: quiz.desc,
+                nickname: teacherQuiz.memberNickname,  // 백엔드에서 받은 memberNickname 사용
+                createdAt: quiz.createdAt || new Date().toISOString()
               };
             } catch (error) {
               console.error(`퀴즈 정보 조회 실패 (ID: ${teacherQuiz.quizId}):`, error);
-              return {
-                ...teacherQuiz,
-                quizTitle: '제목 없음',
-                quizCategory: '-',
-                quizLevel: '-',
-                nickname: '알 수 없음',
-                createdAt: new Date().toISOString()
-              };
+              return null;
             }
           })
         );
-        
-        this.currentGameQuizzes = quizzesWithDetails;
+
+        this.currentGameQuizzes = quizzesWithDetails.filter(quiz => quiz !== null);
         this.currentGame = game;
         this.showQuizListModalFlag = true;
       } catch (error) {
@@ -443,6 +506,8 @@ export default {
       this.showQuizListModalFlag = false;
       this.selectedCurrentQuizzes = [];
       this.currentGame = null;
+      this.quizListSearchType = 'all';
+      this.quizListSearchKeyword = '';
     },
 
     toggleCurrentQuizSelection(quiz) {
@@ -476,19 +541,18 @@ export default {
           );
         }
 
-        // 삭제 후 목록 새로고침
-        const response = await axios.get(
-          `${process.env.VUE_APP_BE_API_URL}/api/v1/teacher-quizzes/game/${this.currentGame.gameId}`,
-          { headers: { Authorization: `Bearer ${token}` }}
-        );
-        
-        this.currentGameQuizzes = response.data;
+        // 현재 게임의 퀴즈 목록을 다시 불러옴
+        await this.showQuizListModal(this.currentGame);
         this.selectedCurrentQuizzes = [];
-        alert('선택한 퀴즈가 성공적으로 삭제되었습니다.');
+        alert('선택한 퀴즈가 성적으로 삭제되었습니다.');
       } catch (error) {
         console.error("퀴즈 삭제 실패:", error);
         alert("퀴즈 삭제에 실패했습니다.");
       }
+    },
+
+    handleQuizListSearch() {
+      // 퀴즈 목록 보기 검색 처리
     }
   },
   mounted() {
@@ -710,7 +774,7 @@ export default {
 }
 
 .view-quiz-btn {
-  background-color: #2196F3;
+  background-color: #000000d6;
   color: white;
   border: none;
   padding: 8px 16px;
