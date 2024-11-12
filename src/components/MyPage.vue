@@ -23,7 +23,7 @@
                   </div>
                 </div>
                 <button @click="removeQuizFromGame(game.gameId, quiz.quizId)" class="remove-btn">
-                  제거
+                  제
                 </button>
               </div>
             </div>
@@ -231,6 +231,7 @@ export default {
       quizListSearchKeyword: '',
       currentPage: 1,
       itemsPerPage: 10,
+      totalItems: 0, // 총 퀴즈 수
       quizListCurrentPage: 1,
       quizListItemsPerPage: 10,
     }
@@ -301,12 +302,10 @@ export default {
       });
     },
     paginatedQuizzes() {
-      const start = (this.currentPage - 1) * this.itemsPerPage;
-      const end = start + this.itemsPerPage;
-      return this.filteredQuizzes.slice(start, end);
+      return this.quizList;
     },
     totalPages() {
-      return Math.ceil(this.filteredQuizzes.length / this.itemsPerPage);
+      return Math.ceil(this.totalItems / this.itemsPerPage);
     },
     paginatedCurrentGameQuizzes() {
       const start = (this.quizListCurrentPage - 1) * this.quizListItemsPerPage;
@@ -315,6 +314,9 @@ export default {
     },
     quizListTotalPages() {
       return Math.ceil(this.filteredCurrentGameQuizzes.length / this.quizListItemsPerPage);
+    },
+    pageDisplay() {
+      return `${this.currentPage}/${this.totalPages}`;
     }
   },
   methods: {
@@ -342,35 +344,79 @@ export default {
         this.games = response.data;
       } catch (error) {
         console.error("게임 목록 조회 실패:", error);
-        alert("게임 목록을 불러오는데 실패했습니다.");
+        alert("게임 목록을 오는데 실패했습니다.");
       }
     },
 
     // 전체 퀴즈 목록 조회
-    async fetchQuizList() {
+    async fetchQuizList(page = this.currentPage - 1, size = this.itemsPerPage) {
       const token = localStorage.getItem("jwtToken");
       const beUrl = process.env.VUE_APP_BE_API_URL;
       
       try {
+        // 현재 게임의 퀴즈 목록 가져오기
+        const currentGameResponse = await axios.get(
+          `${beUrl}/api/v1/teacher-quizzes/game/${this.currentGameId}`,
+          { headers: { Authorization: `Bearer ${token}` }}
+        );
+        
+        const existingQuizIds = currentGameResponse.data.map(quiz => quiz.quizId);
+
+        // 전체 퀴즈 목록을 한 번에 가져오기
         const response = await axios.get(`${beUrl}/api/v1/quizs/all`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
+          params: { 
+            page: 0,
+            size: 9999
+          }
         });
 
-        // 현재 게임에 추가된 퀴즈 ID 목록 가져오기
-        const currentGameQuizIds = this.currentGameQuizzes.map(quiz => quiz.quizId);
+        // 이미 추가된 퀴즈를 제외한 전체 퀴즈
+        const availableQuizzes = response.data.content.filter(
+          quiz => !existingQuizIds.includes(quiz.quizId)
+        );
 
-        // 필터링하여 이미 추가된 퀴즈는 제외
-        this.quizList = response.data.filter(quiz => !currentGameQuizIds.includes(quiz.quizId));
+        // 현재 페이지의 시작과 끝 인덱스 계산
+        const startIndex = page * size;
+        const endIndex = startIndex + size;
+
+        // 현재 페이지에 표시할 퀴즈
+        this.quizList = availableQuizzes.slice(startIndex, endIndex).map(quiz => ({
+          quizId: quiz.quizId,
+          memberNickname: quiz.memberNickname || '알 수 없음',
+          quizCategory: quiz.quizCategory,
+          quizTitle: quiz.quizTitle,
+          quizLevel: quiz.quizLevel,
+          quizAnswer: quiz.quizAnswer,
+          quizDescription: quiz.quizDescription,
+          date: quiz.date,
+          count: quiz.count || 0
+        }));
+
+        // 전체 사용 가능한 퀴즈 수
+        const totalAvailableQuizzes = availableQuizzes.length;
+        
+        // 페이지네이션 정보 업데이트 (전체 페이지 수는 처음 계산된 값을 유지)
+        if (!this.totalPages) {
+          this.totalPages = Math.ceil(totalAvailableQuizzes / this.itemsPerPage);
+        }
+        this.totalItems = totalAvailableQuizzes;
+
       } catch (error) {
         console.error("퀴즈 목록 조회 실패:", error);
+        alert("퀴즈 목록을 불러오는 데 실패했습니다.");
       }
     },
 
     // 퀴즈  모달 표시
     async showAddQuizModal(game) {
       this.currentGameId = game.gameId;
-      await this.fetchCurrentGameQuizzes(); // 현재 게임에 추가된 퀴즈 목록 불러오기
-      await this.fetchQuizList(); // 필터링된 퀴즈 목록 불러오기
+      this.currentGame = game;
+      this.currentPage = 1;
+      this.selectedQuizzes = [];
+      this.totalPages = null; // 모달이 열릴 때 totalPages 초기화
+      await this.fetchCurrentGameQuizzes();
+      await this.fetchQuizList(0);
       this.showQuizModal = true;
     },
 
@@ -424,7 +470,7 @@ export default {
         alert("퀴즈가 제거되었습니다.");
       } catch (error) {
         console.error("퀴즈 제거 실패:", error);
-        alert("퀴즈 제거�� 실패했습니다.");
+        alert("퀴즈 제거 실패했습니다.");
       }
     },
 
@@ -460,7 +506,7 @@ export default {
 
         await this.fetchMyGames();
         this.closeQuizModal();
-        alert('선택한 퀴즈가 성공적로 추가되었습니.');
+        alert('선택한 퀴즈가 성공적로 추가되었습니다.');
       } catch (error) {
         console.error("퀴즈 추가 실패:", error);
         alert("퀴즈 추가에 실패했습니다.");
@@ -579,7 +625,7 @@ export default {
         // 현재 게임의 퀴즈 목록을 다시 불러옴
         await this.showQuizListModal(this.currentGame);
         this.selectedCurrentQuizzes = [];
-        alert('선택한 퀴즈가 성적으로 삭제었습니다.');
+        alert('선택한 퀴즈가 성공적으로 삭제되었습니다.');
       } catch (error) {
         console.error("퀴즈 삭제 실패:", error);
         alert("퀴즈 삭제에 실패했습니다.");
@@ -590,15 +636,17 @@ export default {
       // 퀴즈 목록 보기 검색 처리
     },
 
-    prevPage() {
-      if (this.currentPage > 1) {
-        this.currentPage--;
+    async nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+        await this.fetchQuizList();
       }
     },
 
-    nextPage() {
-      if (this.currentPage < this.totalPages) {
-        this.currentPage++;
+    async prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+        await this.fetchQuizList();
       }
     },
 
@@ -661,7 +709,7 @@ export default {
   width: 100%;
   padding-top: 80px;
   padding-bottom: 40px;
-  overflow-y: auto; /* 세로 스크롤 활성화 */
+  overflow-y: auto; /* 로 스크롤 활성화 */
   height: calc(100vh - 120px); /* 헤더와 푸터를 제외한 높이 */
 }
 
@@ -982,5 +1030,32 @@ export default {
 
 .games-section::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.pagination span {
+  min-width: 60px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.pagination button {
+  padding: 5px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
 }
 </style>
