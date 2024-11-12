@@ -3,7 +3,12 @@
     <AppHeader />
     <div class="content">
       <div class="games-section">
-        <h2>내 게임 목록</h2>
+        <div class="games-header">
+          <h2>내 게임 목록</h2>
+          <button @click="showAddGameModal" class="add-game-btn">
+            새 게임 만들기
+          </button>
+        </div>
 
         <!-- 게임 목록 -->
         <div class="games-list">
@@ -197,6 +202,41 @@
             </div>
           </div>
         </div>
+
+        <!-- 게임 추가 모달 -->
+        <div v-if="showGameModal" class="modal">
+          <div class="modal-content">
+            <h3>새 게임 만들기</h3>
+            <div class="game-form">
+              <div class="form-group">
+                <label>게임 이름</label>
+                <input 
+                  v-model="newGame.gameName" 
+                  type="text" 
+                  placeholder="게임 이름을 입력하세요"
+                  class="form-input"
+                >
+              </div>
+              <div class="form-group">
+                <label>비밀번호</label>
+                <input 
+                  v-model="newGame.gamePassword" 
+                  type="password" 
+                  placeholder="비밀번호를 입력하세요"
+                  class="form-input"
+                >
+              </div>
+            </div>
+            <div class="modal-buttons">
+              <button @click="createGame" class="create-btn" :disabled="!isValidGame">
+                게임 만들기
+              </button>
+              <button @click="closeGameModal" class="cancel-btn">
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <AppFooter />
@@ -234,6 +274,11 @@ export default {
       totalItems: 0, // 총 퀴즈 수
       quizListCurrentPage: 1,
       quizListItemsPerPage: 10,
+      showGameModal: false,
+      newGame: {
+        gameName: '',
+        gamePassword: ''
+      }
     }
   },
   computed: {
@@ -317,6 +362,9 @@ export default {
     },
     pageDisplay() {
       return `${this.currentPage}/${this.totalPages}`;
+    },
+    isValidGame() {
+      return this.newGame.gameName && this.newGame.gamePassword;
     }
   },
   methods: {
@@ -683,6 +731,46 @@ export default {
         this.currentGameQuizzes = response.data;
       } catch (error) {
         console.error("현재 게임의 퀴즈 목록 조회 실패:", error);
+      }
+    },
+
+    showAddGameModal() {
+      this.showGameModal = true;
+      this.newGame = {
+        gameName: '',
+        gamePassword: ''
+      };
+    },
+
+    closeGameModal() {
+      this.showGameModal = false;
+    },
+
+    async createGame() {
+      const token = localStorage.getItem("jwtToken");
+      const memberId = localStorage.getItem("memberId");
+
+      try {
+        const response = await axios.post(
+          `${process.env.VUE_APP_BE_API_URL}/api/v1/games`,
+          {
+            memberId: Number(memberId),
+            gameName: this.newGame.gameName,
+            gamePassword: this.newGame.gamePassword
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+
+        if (response.data) {
+          await this.fetchMyGames();
+          this.closeGameModal();
+          alert('게임이 성공적으로 생성되었습니다.');
+        }
+      } catch (error) {
+        console.error("게임 생성 실패:", error);
+        alert("게임 생성에 실패했습니다.");
       }
     }
   },
@@ -1056,6 +1144,62 @@ export default {
 
 .pagination button:disabled {
   background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.games-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.add-game-btn {
+  background-color: #000000;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.game-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #333;
+}
+
+.form-input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.create-btn {
+  background-color: #000000;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.create-btn:disabled {
+  background-color: #cccccc;
   cursor: not-allowed;
 }
 </style>
