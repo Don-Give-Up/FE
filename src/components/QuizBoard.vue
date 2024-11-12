@@ -4,7 +4,7 @@
     <div class="content">
       <div class="quiz-board">
         <div class="search-area">
-          <div class="total-count">전체 {{ filteredList.length }}건</div>
+          <div class="total-count">전체 {{ totalItems }}건</div>
           <div class="search-container">
             <select v-model="searchType" class="search-select">
               <option value="all">전체</option>
@@ -36,7 +36,9 @@
             <tbody>
               <template v-for="i in itemsPerPage" :key="i">
                 <tr v-if="paginatedQuizList[i-1]">
-                  <td class="id-cell">{{ paginatedQuizList[i-1].quizId }}</td>
+                  <td class="id-cell">
+                    {{ totalItems - ((currentPage - 1) * itemsPerPage + (i-1)) }}
+                  </td>
                   <td class="title-cell" @click="goToQuizDetail(paginatedQuizList[i-1].quizId)">
                     <div class="title-wrapper">
                       <span class="title-text">{{ paginatedQuizList[i-1].quizTitle }}</span>
@@ -46,8 +48,8 @@
                       </span>
                     </div>
                   </td>
-                  <td class="author-cell">{{ paginatedQuizList[i-1].nickname }}</td>
-                  <td class="date-cell">{{ formatDate(paginatedQuizList[i-1].createdAt) }}</td>
+                  <td class="author-cell">{{ paginatedQuizList[i-1].memberNickname }}</td>
+                  <td class="date-cell">{{ formatDate(paginatedQuizList[i-1].date) }}</td>
                 </tr>
                 <tr v-else class="empty-row">
                   <td colspan="4">&nbsp;</td>
@@ -103,54 +105,50 @@ export default {
       quizList: [],
       currentPage: 1,
       itemsPerPage: 10,
+      totalItems: 0,
       searchType: 'all',
       searchKeyword: '',
     };
   },
   computed: {
     filteredList() {
-      if (!this.searchKeyword) return this.quizList;
-      
-      return this.quizList.filter(quiz => {
-        const keyword = this.searchKeyword.toLowerCase();
-        switch (this.searchType) {
-          case 'title':
-            return quiz.quizTitle.toLowerCase().includes(keyword);
-          case 'category':
-            return quiz.quizCategory.toLowerCase().includes(keyword);
-          case 'level':
-            return quiz.quizLevel.toLowerCase().includes(keyword);
-          case 'author':
-            return quiz.nickname.toLowerCase().includes(keyword);
-          case 'all':
-            return quiz.quizTitle.toLowerCase().includes(keyword) ||
-                   quiz.quizCategory.toLowerCase().includes(keyword) ||
-                   quiz.quizLevel.toLowerCase().includes(keyword) ||
-                   quiz.nickname.toLowerCase().includes(keyword);
-          default:
-            return true;
-        }
-      });
+      return this.quizList;
     },
     paginatedQuizList() {
-      const start = (this.currentPage - 1) * this.itemsPerPage;
-      const end = start + this.itemsPerPage;
-      return this.filteredList.slice(start, end);
+      return this.quizList;
     },
     totalPages() {
-      return Math.ceil(this.filteredList.length / this.itemsPerPage);
+      return Math.ceil(this.totalItems / this.itemsPerPage);
     },
   },
   methods: {
-    nextPage() {
+    async nextPage() {
       if (this.currentPage < this.totalPages) {
         this.currentPage++;
+        await this.fetchQuizList();
       }
     },
-    prevPage() {
+    async prevPage() {
       if (this.currentPage > 1) {
         this.currentPage--;
+        await this.fetchQuizList();
       }
+    },
+    async goToPage(pageNum) {
+      this.currentPage = pageNum;
+      await this.fetchQuizList();
+    },
+    async goToFirstPage() {
+      this.currentPage = 1;
+      await this.fetchQuizList();
+    },
+    async goToLastPage() {
+      this.currentPage = this.totalPages;
+      await this.fetchQuizList();
+    },
+    async handleSearch() {
+      this.currentPage = 1;
+      await this.fetchQuizList();
     },
     async fetchQuizList() {
       const token = localStorage.getItem("jwtToken");
@@ -161,70 +159,79 @@ export default {
 
       try {
         const beUrl = process.env.VUE_APP_BE_API_URL;
-        const response = await axios.get(beUrl + "/api/v1/quizs/all", {
+        const response = await axios.get(`${beUrl}/api/v1/quizs/all`, {
+          params: {
+            page: this.currentPage - 1,
+            size: this.itemsPerPage,
+            searchType: this.searchType,
+            searchKeyword: this.searchKeyword
+          },
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
-        // 각 퀴즈에 대해 `memberId`를 이용해 `memberNickname` 가져오기
-        const quizzesWithNickname = await Promise.all(
-          response.data.map(async (quiz) => {
-            const createdAt = quiz.createdAt || new Date().toISOString();
+        console.log("서버 응답 데이터:", response.data);
 
-            // `memberId`가 있을 경우 닉네임 조회
-            let nickname = '알 수 없음';
-            if (quiz.memberId) {
-              try {
-                const nicknameResponse = await axios.get(
-                  `${beUrl}/api/v1/members/${quiz.memberId}/nickname`,
-                  {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                    },
-                  }
-                );
-                nickname = nicknameResponse.data || '알 수 없음';
-              } catch (error) {
-                console.error("닉네임 조회 실패:", error);
-              }
-            }
+        // Page 객체에서 데이터 추출
+        this.quizList = response.data.content.map(quiz => ({
+          quizId: quiz.quizId,
+          memberNickname: quiz.memberNickname || '알 수 없음',
+          quizCategory: quiz.quizCategory,
+          quizTitle: quiz.quizTitle,
+          quizLevel: quiz.quizLevel,
+          quizAnswer: quiz.quizAnswer,
+          quizDescription: quiz.quizDescription,
+          date: quiz.date,
+          count: quiz.count || 0
+        }));
 
-            return {
-              quizId: quiz.quizId,
-              quizCategory: quiz.quizCategory,
-              quizTitle: quiz.quizTitle,
-              quizLevel: quiz.quizLevel,
-              nickname: nickname, // 조회한 닉네임을 설정
-              createdAt: createdAt,
-              views: quiz.count || 0
-            };
-          })
-        );
-
-        this.quizList = quizzesWithNickname.sort((a, b) => b.quizId - a.quizId); // ID 기준 내림차순 정렬
+        // 페이지네이션 정보 업데이트
+        this.totalItems = response.data.totalElements;
+        
       } catch (error) {
         console.error("퀴즈 목록 조회 실패:", error);
         alert("퀴즈 목록을 불러오는 데 실패했습니다.");
       }
     },
-    goToFirstPage() {
-      this.currentPage = 1;
+    createQuiz() {
+      this.$router.push('/quizform');  // router/index.js에 정의된 경로로 이동
     },
-    goToLastPage() {
-      this.currentPage = this.totalPages;
+    goToQuizDetail(quizId) {
+      this.$router.push(`/quiz/${quizId}`);
     },
-    goToPage(pageNum) {
-      this.currentPage = pageNum;
-    },
-    formatDate(dateString) {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return date.toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).replace(/\. /g, '-').replace('.', '');
+    formatDate(date) {
+      if (!date) return '';
+      
+      try {
+        if (date instanceof Date) {
+          return date.toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }).replace(/\. /g, '-').replace('.', '');
+        }
+        
+        // date가 배열인 경우
+        if (Array.isArray(date)) {
+          const newDate = new Date(date[0], date[1]-1, date[2]);
+          return newDate.toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }).replace(/\. /g, '-').replace('.', '');
+        }
+        
+        // 문자열인 경우
+        return new Date(date).toLocaleDateString('ko-KR', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).replace(/\. /g, '-').replace('.', '');
+      } catch (error) {
+        console.error('날짜 변환 실패:', error, date);
+        return '';
+      }
     },
     getDisplayedPages() {
       const totalPages = this.totalPages;
@@ -251,19 +258,19 @@ export default {
       
       return [current - 2, current - 1, current, current + 1, current + 2];
     },
-    handleSearch() {
-      this.currentPage = 1; // 검색 시 첫 페이지로 이동
-    },
-    createQuiz() {
-      this.$router.push('/quizform');  // router/index.js에 정의된 경로로 이동
-    },
-    goToQuizDetail(quizId) {
-      this.$router.push(`/quiz/${quizId}`);
-    }
   },
   watch: {
-    searchType() {
-      this.currentPage = 1; // 검색 타입 변경 시 첫 페이지로 이동
+    searchType: {
+      async handler() {
+        this.currentPage = 1;
+        await this.fetchQuizList();
+      }
+    },
+    searchKeyword: {
+      async handler() {
+        this.currentPage = 1;
+        await this.fetchQuizList();
+      }
     }
   },
   async mounted() {
@@ -308,7 +315,7 @@ export default {
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  min-height: calc(100vh - 200px); /* 화면 높이에서 헤더/푸터 높이를 뺀 값 */
+  min-height: calc(100vh - 200px); /* 화면 높이에서 헤더/푸터 높��를 뺀 값 */
 }
 
 

@@ -10,7 +10,7 @@
             <div class="quiz-meta">
               <span class="category-badge">{{ quiz.quizCategory }}</span>
               <span class="level-badge">{{ quiz.quizLevel }}</span>
-              <span class="author">작성자: {{ quiz.nickname }}</span>
+              <span class="author">작성자: {{ quiz.memberNickname }}</span>
               <span class="date">작성일: {{ formatDate(quiz.date) }}</span>
             </div>
           </div>
@@ -48,10 +48,10 @@
             <div v-for="comment in comments" :key="comment.quizCommentId" class="comment">
               <div class="comment-header">
                 <div class="comment-left">
-                  <span class="comment-author">{{ comment.nickname }}</span>
+                  <span class="comment-author">{{ comment.memberNickname }}</span>
                   <span class="comment-date">{{ formatDate(comment.quizCommentCreatedAt) }}</span>
                 </div>
-                <div class="comment-actions" v-if="isCurrentUserComment(comment.memberId)">
+                <div class="comment-actions" v-if="comment.memberNickname === memberNickname">
                   <button 
                     v-if="!comment.isEditing" 
                     @click="startEditing(comment)" 
@@ -112,7 +112,7 @@ export default {
         quizLevel: "",
         quizAnswer: "",
         quizDescription: "",
-        nickname: "",
+        memberNickname: "",
         date: null,
         count: 0
       },
@@ -121,6 +121,8 @@ export default {
       selectedAnswer: null,
       showResult: false,
       currentUserId: null,
+      memberNickname: localStorage.getItem("memberNickname") || "",
+      memberId: localStorage.getItem("memberId") || "",
     };
   },
   methods: {
@@ -136,57 +138,39 @@ export default {
         const beUrl = process.env.VUE_APP_BE_API_URL;
         const quizId = this.$route.params.id;
         
-        const response = await axios.get(`${beUrl}/api/v1/quizs/all`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const response = await axios.get(`${beUrl}/api/v1/quizs/quiz/${quizId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
-        
-        console.log('전체 퀴즈 데이터:', response.data);
-        
-        const quizData = response.data.find(quiz => quiz.quizId === parseInt(quizId));
-        console.log('선택된 퀴즈 데이터:', quizData);
-        
-        if (!quizData) {
-          throw new Error('퀴즈를 찾을 수 없습니다.');
-        }
 
-        // memberId로 닉네임 조회
-        let nickname = '알 수 없음';
-        if (quizData.memberId) {
-          try {
-            const nicknameResponse = await axios.get(
-              `${beUrl}/api/v1/members/${quizData.memberId}/nickname`,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            );
-            nickname = nicknameResponse.data || '알 수 없음';
-          } catch (error) {
-            console.error("닉네임 조회 실패:", error);
-          }
-        }
+        console.log('백엔드 응답 데이터:', response.data);
 
-        // 퀴즈 데이터 설정
         this.quiz = {
-          quizId: quizData.quizId,
-          memberId: quizData.memberId,
-          quizTitle: quizData.quizTitle,
-          quizCategory: quizData.quizCategory,
-          quizLevel: quizData.quizLevel,
-          quizDescription: quizData.quizDescription,
-          quizAnswer: quizData.quizAnswer,
-          nickname: nickname,
-          date: quizData.createdAt || quizData.date,
-          count: quizData.count || 0
+          quizId: response.data.quizId,
+          quizTitle: response.data.quizTitle,
+          quizCategory: response.data.quizCategory,
+          quizLevel: response.data.quizLevel,
+          quizAnswer: response.data.quizAnswer,
+          quizDescription: response.data.quizDescription,
+          memberNickname: response.data.memberNickname,
+          date: response.data.date,
+          count: response.data.count || 0
         };
 
-        console.log('설정된 퀴즈 데이터:', this.quiz);
+        console.log('매핑된 퀴즈 데이터:', {
+          제목: this.quiz.quizTitle,
+          카테고리: this.quiz.quizCategory,
+          난이도: this.quiz.quizLevel,
+          작성자: this.quiz.memberNickname,
+          작성일: this.quiz.date,
+          원본데이터: response.data
+        });
 
       } catch (error) {
         console.error("퀴즈 상세 정보 조회 실패:", error);
-        alert("퀴즈 정보를 불러오는데 실패했습니다.");
-        this.$router.push('/quizboard');
+        console.error('에러 응답:', error.response?.data);
+        alert("퀴즈 정보를 불러오는 데 실패했습니다.");
       }
     },
     async fetchComments() {
@@ -201,35 +185,18 @@ export default {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        // 닉네임 조회를 위한 Promise 배열 생성
-        const commentsWithNicknames = await Promise.all(
-          response.data.map(async (comment) => {
-            try {
-              const nicknameResponse = await axios.get(
-                `${beUrl}/api/v1/members/${comment.memberId}/nickname`,
-                { headers: { Authorization: `Bearer ${token}` }}
-              );
-              return {
-                ...comment,
-                nickname: nicknameResponse.data || '알 수 없음'
-              };
-            } catch (error) {
-              console.error("닉네임 조회 실패:", error);
-              return {
-                ...comment,
-                nickname: '알 수 없음'
-              };
-            }
-          })
-        );
+        this.comments = response.data.map(comment => ({
+          ...comment,
+          isEditing: false,
+          editContent: comment.quizCommentContent
+        }));
         
-        this.comments = commentsWithNicknames;
       } catch (error) {
         console.error("댓글 조회 실패:", error);
       }
     },
     isCurrentUserComment(commentMemberId) {
-      return this.currentUserId === commentMemberId;
+      return commentMemberId === this.memberId;
     },
     async submitComment() {
       if (!this.newComment.trim()) {
@@ -238,7 +205,7 @@ export default {
       }
 
       const token = localStorage.getItem("jwtToken");
-      if (!token || !this.currentUserId) {
+      if (!token) {
         alert("로그인이 필요합니다.");
         this.$router.push("/login");
         return;
@@ -251,7 +218,7 @@ export default {
         await axios.post(
           `${beUrl}/api/v1/comments/quiz/${quizId}`,
           {
-            memberId: this.currentUserId,
+            memberId: this.memberId,
             quizCommentContent: this.newComment
           },
           { headers: { Authorization: `Bearer ${token}` }}
@@ -338,13 +305,14 @@ export default {
         await axios.put(
           `${beUrl}/api/v1/comments/${comment.quizCommentId}`,
           {
+            memberId: this.memberId,
             quizCommentContent: comment.editContent
           },
           { headers: { Authorization: `Bearer ${token}` }}
         );
 
         comment.isEditing = false;
-        await this.fetchComments(); // 댓글 목록 새로고침
+        await this.fetchComments();
       } catch (error) {
         console.error("댓글 수정 실패:", error);
         alert("댓글 수정에 실패했습니다.");
