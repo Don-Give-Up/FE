@@ -9,15 +9,7 @@
         <div class="games-list">
           <div v-for="game in games" :key="game.gameId" class="game-card">
             <div class="game-header">
-              <h3>{{ game.gameName }}</h3>
-              <div class="game-buttons">
-                <button @click="showQuizListModal(game)" class="view-quiz-btn">
-                  퀴즈 목록 보기
-                </button>
-                <button @click="showAddQuizModal(game)" class="add-quiz-btn">
-                  퀴즈 추가
-                </button>
-              </div>
+              <h3 class="game-title">{{ game.gameName }}</h3>
             </div>
             
             <!-- 게임에 포함된 퀴즈 목록 -->
@@ -32,6 +24,18 @@
                 </div>
                 <button @click="removeQuizFromGame(game.gameId, quiz.quizId)" class="remove-btn">
                   제거
+                </button>
+              </div>
+            </div>
+
+            <!-- 버튼을 아래로 이동 -->
+            <div class="game-footer">
+              <div class="game-buttons">
+                <button @click="showQuizListModal(game)" class="view-quiz-btn">
+                  퀴즈 목록 보기
+                </button>
+                <button @click="showAddQuizModal(game)" class="add-quiz-btn">
+                  퀴즈 추가
                 </button>
               </div>
             </div>
@@ -317,13 +321,28 @@ export default {
     // 내 게임 목록 조회
     async fetchMyGames() {
       const token = localStorage.getItem("jwtToken");
+      const memberId = localStorage.getItem("memberId");
+      
+      if (!token || !memberId) {
+        console.error("로그인이 필요합니다.");
+        this.$router.push("/login");
+        return;
+      }
+
       try {
-        const response = await axios.get(`${process.env.VUE_APP_BE_API_URL}/api/v1/games`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        // /api/v1/games/member/{memberId} 엔드포인트로 변경
+        const response = await axios.get(
+          `${process.env.VUE_APP_BE_API_URL}/api/v1/games/member/${memberId}`, 
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+        
+        console.log('내 게임 목록:', response.data);
         this.games = response.data;
       } catch (error) {
         console.error("게임 목록 조회 실패:", error);
+        alert("게임 목록을 불러오는데 실패했습니다.");
       }
     },
 
@@ -405,7 +424,7 @@ export default {
         alert("퀴즈가 제거되었습니다.");
       } catch (error) {
         console.error("퀴즈 제거 실패:", error);
-        alert("퀴즈 제거에 실패했습니다.");
+        alert("퀴즈 제거�� 실패했습니다.");
       }
     },
 
@@ -441,7 +460,7 @@ export default {
 
         await this.fetchMyGames();
         this.closeQuizModal();
-        alert('선택한 퀴즈가 성공적으로 추가되었습니다.');
+        alert('선택한 퀴즈가 성공적로 추가되었습니.');
       } catch (error) {
         console.error("퀴즈 추가 실패:", error);
         alert("퀴즈 추가에 실패했습니다.");
@@ -468,7 +487,7 @@ export default {
       const beUrl = process.env.VUE_APP_BE_API_URL;
       
       try {
-        // TeacherQuiz 목록을 가져옴 (이미 memberNickname이 포함되어 있음)
+        // TeacherQuiz 목록을 가져옴 (이미 memberNickname이 함되어 있음)
         const teacherQuizResponse = await axios.get(
           `${beUrl}/api/v1/teacher-quizzes/game/${game.gameId}`,
           { headers: { Authorization: `Bearer ${token}` }}
@@ -541,7 +560,7 @@ export default {
 
     async removeSelectedQuizzes() {
       if (!this.selectedCurrentQuizzes.length) {
-        alert('선택된 퀴즈가 없습니다.');
+        alert('선된 퀴즈가 없습니다.');
         return;
       }
 
@@ -631,6 +650,7 @@ export default {
   flex-direction: column;
   min-height: 100vh;
   background-color: #fff;
+  overflow: hidden; /* 전체 페이지 스크롤 방지 */
 }
 
 .content {
@@ -639,8 +659,10 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
-  padding-top: 80px; /* 헤더 높이만큼 여백 */
+  padding-top: 80px;
   padding-bottom: 40px;
+  overflow-y: auto; /* 세로 스크롤 활성화 */
+  height: calc(100vh - 120px); /* 헤더와 푸터를 제외한 높이 */
 }
 
 .games-section {
@@ -648,57 +670,95 @@ export default {
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  min-height: calc(100vh - 200px); /* 화면 높이에서 헤더/푸터 높이를 뺀 값 */
+  overflow-y: auto; /* 세로 스크롤 활성화 */
+  max-height: calc(100vh - 160px); /* 헤더와 푸터를 제외한 높이 */
 }
 
-/* 기존 스타일 유지하면서 추가 */
-@media (max-height: 900px) {
-  .games-section {
-    min-height: calc(100vh - 180px);
-  }
+/* 스크롤바 숨기기 */
+.games-section::-webkit-scrollbar {
+  display: none; /* 웹킷 기반 브라우저에서 스크롤바 숨기기 */
+}
+
+.games-section {
+  -ms-overflow-style: none;  /* IE 및 Edge에서 스크롤바 숨기기 */
+  scrollbar-width: none;  /* Firefox에서 스크롤바 숨기기 */
 }
 
 .games-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  gap: 30px;
   margin-top: 20px;
+  padding: 10px;
 }
 
 .game-card {
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 15px;
+  padding: 20px;
   background: white;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .game-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 15px;
+  text-align: left;  /* 제목 왼쪽 정렬 */
+}
+
+.game-title {
+  font-size: 1.5rem;
+  margin: 0;
+  color: #333;
 }
 
 .quiz-list {
-  border-top: 1px solid #eee;
-  padding-top: 10px;
+  flex: 1;  /* 남은 공간 채우기 */
+  overflow-y: auto;  /* 내용이 많으면 스크롤 */
+  margin-bottom: 15px;  /* 버튼과의 간격 */
 }
 
-.quiz-item {
+.game-footer {
+  margin-top: auto;  /* 하단에 고정 */
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+}
+
+.game-buttons {
   display: flex;
-  justify-content: space-between;
+  gap: 10px;
+  justify-content: center;  /* 버튼 중앙 정렬 */
+}
+
+.view-quiz-btn, .add-quiz-btn {
+  min-width: 120px;
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f5f5f5;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.view-quiz-btn {
+  background-color: #000000d6;
+  color: white;
 }
 
 .add-quiz-btn {
   background-color: rgba(0, 0, 0, 0.865);
   color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
+}
+
+/* 호버 효과 */
+.view-quiz-btn:hover, .add-quiz-btn:hover {
+  opacity: 0.9;
 }
 
 .remove-btn {
@@ -870,46 +930,57 @@ export default {
   cursor: not-allowed;
 }
 
-.game-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.view-quiz-btn {
-  background-color: #000000d6;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.remove-selected-btn {
-  background-color: #f44336;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.remove-selected-btn:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-
-.game-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
 .game-buttons button {
   transition: opacity 0.2s;
 }
 
 .game-buttons button:hover {
   opacity: 0.9;
+}
+
+/* 스크롤바 스타일링 */
+.content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* 반응형 처리 */
+@media (max-height: 900px) {
+  .games-section {
+    height: auto;
+    margin-bottom: 20px;
+  }
+}
+
+/* 스크롤바 스타일링 */
+.games-section::-webkit-scrollbar {
+  width: 8px;
+}
+
+.games-section::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.games-section::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.games-section::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 </style>
