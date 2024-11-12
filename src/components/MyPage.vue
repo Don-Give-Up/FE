@@ -50,52 +50,41 @@
         <!-- 퀴즈 추가 모달 -->
         <div v-if="showQuizModal" class="modal">
           <div class="modal-content">
-            <h3>퀴즈 선택</h3>
+            <h3>퀴즈 추가</h3>
             <div class="search-area">
               <div class="search-container">
-                <select v-model="searchType" class="search-select">
+                <select v-model="quizAddSearchType" class="search-select">
                   <option value="all">전체</option>
                   <option value="title">제목</option>
                   <option value="category">카테고리</option>
                   <option value="level">난이도</option>
-  
                 </select>
                 <input 
-                  v-model="searchKeyword" 
                   type="text" 
-                  placeholder="퀴즈 검색"
-                  class="search-input"
-                  @keyup.enter="handleSearch"
+                  v-model="quizAddSearchKeyword" 
+                  class="search-input" 
+                  placeholder="검색어를 입력하세요"
                 >
-                <button @click="handleSearch" class="search-button">검색</button>
               </div>
             </div>
+
             <div class="quiz-table">
               <table>
                 <thead>
                   <tr>
-                    <th>
-                      <input 
-                        type="checkbox" 
-                        :checked="selectAll" 
-                        @change="toggleSelectAll"
-                      >
-                    </th>
+                    <th><input type="checkbox" v-model="selectAll"></th>
                     <th>제목</th>
                     <th>카테고리</th>
                     <th>난이도</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="quiz in paginatedQuizzes" 
-                      :key="quiz.quizId" 
-                      class="quiz-row"
-                      @click="toggleQuizSelection(quiz)">
-                    <td @click.stop>
+                  <tr v-for="quiz in filteredAddQuizzes" :key="quiz.quizId">
+                    <td>
                       <input 
-                        type="checkbox"
+                        type="checkbox" 
+                        :value="quiz" 
                         v-model="selectedQuizzes"
-                        :value="quiz"
                       >
                     </td>
                     <td>{{ quiz.quizTitle }}</td>
@@ -104,8 +93,8 @@
                   </tr>
                 </tbody>
               </table>
-            
             </div>
+
             <div class="modal-buttons">
               <button @click="addSelectedQuizzes" class="add-selected-btn" :disabled="!selectedQuizzes.length">
                 선택한 퀴즈 추가 ({{ selectedQuizzes.length }}개)
@@ -278,42 +267,49 @@ export default {
       newGame: {
         gameName: '',
         gamePassword: ''
-      }
+      },
+      quizAddSearchType: 'all',
+      quizAddSearchKeyword: '',
+      quizAddCurrentPage: 1,
+      quizAddItemsPerPage: 10,
+      quizAddTotalItems: 0,
     }
   },
   computed: {
     filteredQuizzes() {
+      if (!this.quizList) return [];
       if (!this.searchKeyword) return this.quizList;
       
       const keyword = this.searchKeyword.toLowerCase();
       return this.quizList.filter(quiz => {
+        if (!quiz) return false;
+        
         switch (this.searchType) {
           case 'title':
-            return quiz.quizTitle.toLowerCase().includes(keyword);
+            return quiz.quizTitle?.toLowerCase().includes(keyword);
           case 'category':
-            return quiz.quizCategory.toLowerCase().includes(keyword);
+            return quiz.quizCategory?.toLowerCase().includes(keyword);
           case 'level':
-            return quiz.quizLevel.toLowerCase().includes(keyword);
-          case 'author':
-            return quiz.nickname.toLowerCase().includes(keyword);
+            return quiz.quizLevel?.toLowerCase().includes(keyword);
           case 'all':
-            return quiz.quizTitle.toLowerCase().includes(keyword) ||
-                   quiz.quizCategory.toLowerCase().includes(keyword) ||
-                   quiz.quizLevel.toLowerCase().includes(keyword) ||
-                   quiz.nickname.toLowerCase().includes(keyword);
+            return (quiz.quizTitle?.toLowerCase().includes(keyword) ||
+                   quiz.quizCategory?.toLowerCase().includes(keyword) ||
+                   quiz.quizLevel?.toLowerCase().includes(keyword));
           default:
             return true;
         }
       });
     },
+
     selectAll: {
       get() {
-        return this.filteredQuizzes.length === this.selectedQuizzes.length;
+        return this.quizList.length > 0 && this.selectedQuizzes.length === this.quizList.length;
       },
       set(value) {
-        this.selectedQuizzes = value ? [...this.filteredQuizzes] : [];
+        this.selectedQuizzes = value ? [...this.quizList] : [];
       }
     },
+
     selectAllCurrentQuizzes: {
       get() {
         return this.currentGameQuizzes.length === this.selectedCurrentQuizzes.length;
@@ -322,49 +318,93 @@ export default {
         this.selectedCurrentQuizzes = value ? [...this.currentGameQuizzes] : [];
       }
     },
+
     filteredCurrentGameQuizzes() {
+      if (!this.currentGameQuizzes) return [];
       if (!this.quizListSearchKeyword) return this.currentGameQuizzes;
       
       const keyword = this.quizListSearchKeyword.toLowerCase();
       return this.currentGameQuizzes.filter(quiz => {
+        if (!quiz) return false;
+        
         switch (this.quizListSearchType) {
           case 'title':
-            return quiz.quizTitle.toLowerCase().includes(keyword);
+            return quiz.quizTitle?.toLowerCase().includes(keyword);
           case 'category':
-            return quiz.quizCategory.toLowerCase().includes(keyword);
+            return quiz.quizCategory?.toLowerCase().includes(keyword);
           case 'level':
-            return quiz.quizLevel.toLowerCase().includes(keyword);
-          case 'author':
-            return quiz.nickname.toLowerCase().includes(keyword);
+            return quiz.quizLevel?.toLowerCase().includes(keyword);
           case 'all':
-            return quiz.quizTitle.toLowerCase().includes(keyword) ||
-                   quiz.quizCategory.toLowerCase().includes(keyword) ||
-                   quiz.quizLevel.toLowerCase().includes(keyword) ||
-                   quiz.nickname.toLowerCase().includes(keyword);
+            return (quiz.quizTitle?.toLowerCase().includes(keyword) ||
+                   quiz.quizCategory?.toLowerCase().includes(keyword) ||
+                   quiz.quizLevel?.toLowerCase().includes(keyword));
           default:
             return true;
         }
       });
     },
+
     paginatedQuizzes() {
       return this.quizList;
     },
+
     totalPages() {
       return Math.ceil(this.totalItems / this.itemsPerPage);
     },
+
     paginatedCurrentGameQuizzes() {
+      if (!this.filteredCurrentGameQuizzes) return [];
+      
       const start = (this.quizListCurrentPage - 1) * this.quizListItemsPerPage;
       const end = start + this.quizListItemsPerPage;
       return this.filteredCurrentGameQuizzes.slice(start, end);
     },
+
     quizListTotalPages() {
       return Math.ceil(this.filteredCurrentGameQuizzes.length / this.quizListItemsPerPage);
     },
+
     pageDisplay() {
       return `${this.currentPage}/${this.totalPages}`;
     },
+
     isValidGame() {
       return this.newGame.gameName && this.newGame.gamePassword;
+    },
+
+    quizAddTotalPages() {
+      return Math.ceil(this.quizAddTotalItems / this.quizAddItemsPerPage);
+    },
+
+    filteredAddQuizzes() {
+      if (!this.quizList) return [];
+      if (!this.quizAddSearchKeyword) return this.quizList;
+      
+      const keyword = this.quizAddSearchKeyword.toLowerCase();
+      return this.quizList.filter(quiz => {
+        if (!quiz) return false;
+        
+        switch (this.quizAddSearchType) {
+          case 'title':
+            return quiz.quizTitle?.toLowerCase().includes(keyword);
+          case 'category':
+            return quiz.quizCategory?.toLowerCase().includes(keyword);
+          case 'level':
+            return quiz.quizLevel?.toLowerCase().includes(keyword);
+          case 'all':
+            return (quiz.quizTitle?.toLowerCase().includes(keyword) ||
+                   quiz.quizCategory?.toLowerCase().includes(keyword) ||
+                   quiz.quizLevel?.toLowerCase().includes(keyword));
+          default:
+            return true;
+        }
+      });
+    },
+
+    paginatedAddQuizzes() {
+      const start = (this.quizAddCurrentPage - 1) * this.quizAddItemsPerPage;
+      const end = start + this.quizAddItemsPerPage;
+      return this.filteredAddQuizzes.slice(start, end);
     }
   },
   methods: {
@@ -387,8 +427,7 @@ export default {
             headers: { Authorization: `Bearer ${token}` }
           }
         );
-        
-        console.log('내 게임 목록:', response.data);
+
         this.games = response.data;
       } catch (error) {
         console.error("게임 목록 조회 실패:", error);
@@ -468,8 +507,9 @@ export default {
       this.showQuizModal = true;
     },
 
-    handleSearch() {
-      // 검색 시 필요한 로직 추가
+    async handleSearch() {
+      this.currentPage = 1;
+      await this.fetchQuizList();
     },
 
     // 퀴즈 선택 및 게임에 추가
@@ -772,6 +812,22 @@ export default {
         console.error("게임 생성 실패:", error);
         alert("게임 생성에 실패했습니다.");
       }
+    },
+
+    handleAddQuizSearch() {
+      this.quizAddCurrentPage = 1;
+    },
+
+    prevAddQuizPage() {
+      if (this.quizAddCurrentPage > 1) {
+        this.quizAddCurrentPage--;
+      }
+    },
+
+    nextAddQuizPage() {
+      if (this.quizAddCurrentPage < this.quizAddTotalPages) {
+        this.quizAddCurrentPage++;
+      }
     }
   },
   mounted() {
@@ -1043,7 +1099,8 @@ export default {
   color: #666;
 }
 
-.add-selected-btn, .cancel-btn {
+
+.add-selected-btn, .remove-selected-btn, .cancel-btn {
   padding: 10px 20px;
   border-radius: 4px;
   border: none;
@@ -1056,12 +1113,16 @@ export default {
   color: white;
 }
 
-.cancel-btn {
-  background-color: #f5f5f5;
-  color: #333;
+.remove-selected-btn {
+  background-color: red;
+  color: white;
 }
 
 .add-selected-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+.remove-selected-btn:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
 }
