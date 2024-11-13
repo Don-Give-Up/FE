@@ -20,6 +20,7 @@
             <option value="위험관리와 보험">위험관리 보험</option>
             <option value="금융시사">금융시사</option>
             <option value="금융권 진로탐색">금융권 진로탐색</option>
+            <option value="금융권 진로탐색">뉴스</option>
           </select>
         </div>
         <div class="form-group">
