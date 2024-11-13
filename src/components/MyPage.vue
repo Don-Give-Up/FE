@@ -65,6 +65,7 @@
                   class="search-input" 
                   placeholder="검색어를 입력하세요"
                 >
+                <button @click="handleQuizListSearch" class="search-button">검색</button>
               </div>
             </div>
 
