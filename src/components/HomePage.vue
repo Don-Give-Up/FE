@@ -2,7 +2,7 @@
   <div class="home-container">
     <div class="video-container">
       <video autoplay muted loop playsinline class="background-video">
-        <source src="@/assets/ground.mp4" type="video/mp4" />
+        <source src="@/assets/123.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
       <AppHeader />
@@ -67,10 +67,10 @@ export default {
   },
   setup() {
     const messages = [
-      "스크롤을 내려보세요!",
-      "퀴즈를 탐색해보세요!",
-      "자유 게시판에서 의견을 나눠보세요!",
-      "나만의 학습방을 만들어보세요!",
+      "지식을 넓히고 도전하세요!",
+    "자유 게시판에서 함께 소통하세요!",
+    "나만의 학습방을 완성해보세요!",
+    "교육 퀴즈로 재미있게 배우세요!"
     ];
     const currentMessageIndex = ref(0);
 

@@ -1010,7 +1010,7 @@ export default {
       }
     },
     sortQuizzesById() {
-      this.paginatedCurrentGameQuizzes.sort((a, b) => a.quizId - b.quizId);
+      this.paginatedCurrentGameQuizzes.sort((a, b) => b.quizId - a.quizId);
     }
   },
   mounted() {
